@@ -78,7 +78,7 @@ export default function Home() {
               {/* Testimonial Cards - To be populated later */}
               {[1, 2, 3].map((testimonial) => (
                 <div key={testimonial} className="p-6 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 italic mb-4">"Testimonial coming soon..."</p>
+                  <p className="text-gray-600 italic mb-4">&ldquo;Testimonial coming soon...&rdquo;</p>
                   <p className="font-semibold">- Client Name</p>
                 </div>
               ))}
