@@ -19,7 +19,10 @@ interface ContactFormResponse {
   id: string;
   name: string;
   email: string;
+  phone: string;
   message: string;
+  contactPreference: string;
+  preferredDays: string[];
   timestamp: string;
 }
 
@@ -289,12 +292,36 @@ export default function AdminPage() {
               className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
             >
               <div>
-                <h3 className="font-semibold text-lg">{response.name}</h3>
-                <p className="text-gray-600">{response.email}</p>
-                <p className="mt-2">{response.message}</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Submitted: {format(parseISO(response.timestamp), 'MMMM d, yyyy h:mm a')}
-                </p>
+                <div className="flex justify-between">
+                  <h3 className="font-semibold text-lg">{response.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    Submitted: {format(parseISO(response.timestamp), 'MMMM d, yyyy h:mm a')}
+                  </p>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-4">
+                  <div>
+                    <p><span className="font-medium">Email:</span> {response.email}</p>
+                    <p><span className="font-medium">Phone:</span> {response.phone}</p>
+                  </div>
+                  <div>
+                    <p><span className="font-medium">Preferred Time:</span> {
+                      {
+                        'morning': 'Morning (9am - 12pm)',
+                        'workday': 'Work Day (12pm - 5pm)',
+                        'evening': 'Evening (5pm - 8pm)'
+                      }[response.contactPreference] || response.contactPreference
+                    }</p>
+                    <p><span className="font-medium">Preferred Days:</span> {
+                      response.preferredDays.map(day => 
+                        day.charAt(0).toUpperCase() + day.slice(1)
+                      ).join(', ') || 'None selected'
+                    }</p>
+                  </div>
+                </div>
+                <div className="mt-4 bg-gray-50 p-3 rounded">
+                  <p className="font-medium mb-1">Message:</p>
+                  <p className="text-gray-700">{response.message}</p>
+                </div>
               </div>
             </div>
           ))
