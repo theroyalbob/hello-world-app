@@ -5,16 +5,28 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
+  console.log('POST /api/bookings: Starting request');
   try {
     const body = await request.json();
+    console.log('Request body:', body);
     const { startTime, endTime, name, email, phone } = body;
 
+    // Validate all required fields
     if (!startTime || !endTime || !name || !email || !phone) {
+      console.log('Missing required fields:', { startTime, endTime, name, email, phone });
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    console.log('Creating booking with data:', {
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      name,
+      email,
+      phone
+    });
 
     const booking = await prisma.booking.create({
       data: {
@@ -26,13 +38,24 @@ export async function POST(request: Request) {
       },
     });
 
+    console.log('Successfully created booking:', booking);
     return NextResponse.json(booking);
   } catch (error) {
-    console.error('Error creating booking:', error);
+    console.error('Detailed error creating booking:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { error: 'Failed to create booking', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to create booking', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        name: error instanceof Error ? error.name : 'Unknown'
+      },
       { status: 500 }
     );
+  } finally {
+    console.log('POST /api/bookings: Request completed');
   }
 }
 

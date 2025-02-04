@@ -168,6 +168,14 @@ export default function SchedulePage() {
     setErrorMessage('');
     
     try {
+      console.log('Submitting booking:', {
+        startTime: formData.selectedSlot.startTime,
+        endTime: formData.selectedSlot.endTime,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      });
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,9 +188,14 @@ export default function SchedulePage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to book appointment');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Booking error response:', errorData);
+        throw new Error(errorData.details || errorData.error || 'Failed to book appointment');
+      }
 
       const booking = await response.json();
+      console.log('Booking success:', booking);
       setBookedSlots(prev => [...prev, booking]);
       
       // Reset form
@@ -202,7 +215,11 @@ export default function SchedulePage() {
       }, 5000);
     } catch (error) {
       console.error('Error booking appointment:', error);
-      setErrorMessage('Failed to book appointment. Please try again.');
+      setErrorMessage(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to book appointment. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
