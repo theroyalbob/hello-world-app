@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface ContactFormData {
@@ -35,7 +35,33 @@ export default function ContactPage() {
     { id: 'wednesday', label: 'Wednesday' },
     { id: 'thursday', label: 'Thursday' },
     { id: 'friday', label: 'Friday' },
+    { id: 'saturday', label: 'Saturday' },
+    { id: 'sunday', label: 'Sunday' },
   ];
+
+  // Load form responses from localStorage on mount
+  useEffect(() => {
+    const savedResponses = localStorage.getItem('contactFormResponses');
+    if (!savedResponses) {
+      localStorage.setItem('contactFormResponses', JSON.stringify([]));
+    }
+  }, []);
+
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-numeric characters
+    const numbers = value.replace(/\D/g, '');
+    
+    // Format the number
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 6) {
+      return `(${numbers.slice(0, 3)}) ${numbers.slice(3)}`;
+    } else if (numbers.length <= 10) {
+      return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+    } else {
+      return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6, 10)}`;
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +100,13 @@ export default function ContactPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'phone') {
+      // Format phone number as it's typed
+      setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleDayToggle = (day: string) => {

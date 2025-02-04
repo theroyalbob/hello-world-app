@@ -75,6 +75,36 @@ export default function AdminPage() {
     localStorage.setItem('bookedConsultations', JSON.stringify(updatedBookings));
   };
 
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 6) {
+      return `(${numbers.slice(0, 3)}) ${numbers.slice(3)}`;
+    } else if (numbers.length <= 10) {
+      return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+    } else {
+      return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6, 10)}`;
+    }
+  };
+
+  const handleAdminFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'phone') {
+      setAdminBookingForm(prev => ({
+        ...prev,
+        [name]: formatPhoneNumber(value)
+      }));
+    } else {
+      setAdminBookingForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
   const handleAdminBooking = (e: React.FormEvent) => {
     e.preventDefault();
     const { name, email, phone, date, time } = adminBookingForm;
@@ -175,9 +205,10 @@ export default function AdminPage() {
               <input
                 type="text"
                 id="name"
+                name="name"
                 required
                 value={adminBookingForm.name}
-                onChange={(e) => setAdminBookingForm(prev => ({ ...prev, name: e.target.value }))}
+                onChange={handleAdminFormChange}
                 className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -188,9 +219,10 @@ export default function AdminPage() {
               <input
                 type="email"
                 id="email"
+                name="email"
                 required
                 value={adminBookingForm.email}
-                onChange={(e) => setAdminBookingForm(prev => ({ ...prev, email: e.target.value }))}
+                onChange={handleAdminFormChange}
                 className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -201,9 +233,10 @@ export default function AdminPage() {
               <input
                 type="tel"
                 id="phone"
+                name="phone"
                 required
                 value={adminBookingForm.phone}
-                onChange={(e) => setAdminBookingForm(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={handleAdminFormChange}
                 className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -214,9 +247,10 @@ export default function AdminPage() {
               <input
                 type="date"
                 id="date"
+                name="date"
                 required
                 value={adminBookingForm.date}
-                onChange={(e) => setAdminBookingForm(prev => ({ ...prev, date: e.target.value }))}
+                onChange={handleAdminFormChange}
                 className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -227,9 +261,10 @@ export default function AdminPage() {
               <input
                 type="time"
                 id="time"
+                name="time"
                 required
                 value={adminBookingForm.time}
-                onChange={(e) => setAdminBookingForm(prev => ({ ...prev, time: e.target.value }))}
+                onChange={handleAdminFormChange}
                 className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
