@@ -23,11 +23,9 @@ interface BookedSlot {
   id: string;
   startTime: string;
   endTime: string;
-  bookedBy: {
-    name: string;
-    email: string;
-    phone: string;
-  };
+  name: string;
+  email: string;
+  phone: string;
 }
 
 export default function SchedulePage() {
@@ -43,18 +41,38 @@ export default function SchedulePage() {
   });
   const [showForm, setShowForm] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Load booked slots from localStorage on component mount
+  // Load booked slots from database on component mount and date change
   useEffect(() => {
-    const savedBookings = localStorage.getItem('bookedConsultations');
-    if (savedBookings) {
-      setBookedSlots(JSON.parse(savedBookings));
-    }
-  }, []);
+    const fetchBookings = async () => {
+      try {
+        const response = await fetch('/api/bookings');
+        if (!response.ok) throw new Error('Failed to fetch bookings');
+        const bookings = await response.json();
+        setBookedSlots(bookings);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+        setErrorMessage('Failed to load available time slots. Please try again later.');
+      }
+    };
+
+    fetchBookings();
+  }, [selectedDate]); // Refetch when date changes
+
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `(${numbers.slice(0, 3)}) ${numbers.slice(3)}`;
+    return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6, 10)}`;
+  };
 
   // Check if a slot is already booked
   const isSlotBooked = (slotId: string): boolean => {
-    return bookedSlots.some(booking => booking.id === slotId);
+    return bookedSlots.some(booking => 
+      format(new Date(booking.startTime), 'yyyy-MM-dd-HH-mm') === slotId
+    );
   };
 
   // Generate time slots for the selected date
@@ -92,6 +110,8 @@ export default function SchedulePage() {
   const handleDateChange = (offset: number) => {
     setSelectedDate(addDays(selectedDate, offset));
     setSelectedSlot(null);
+    setShowForm(false);
+    setErrorMessage('');
   };
 
   const handleSlotSelect = (slot: TimeSlot) => {
@@ -99,52 +119,65 @@ export default function SchedulePage() {
     setSelectedSlot(slot);
     setShowForm(true);
     setFormData(prev => ({ ...prev, selectedSlot: slot }));
+    setErrorMessage('');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'phone') {
+      setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.selectedSlot) return;
 
-    // Create new booking
-    const newBooking: BookedSlot = {
-      id: formData.selectedSlot.id,
-      startTime: formData.selectedSlot.startTime.toISOString(),
-      endTime: formData.selectedSlot.endTime.toISOString(),
-      bookedBy: {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-      },
-    };
-
-    // Update booked slots
-    const updatedBookings = [...bookedSlots, newBooking];
-    setBookedSlots(updatedBookings);
-
-    // Save to localStorage
-    localStorage.setItem('bookedConsultations', JSON.stringify(updatedBookings));
+    setIsLoading(true);
+    setErrorMessage('');
     
-    // Clear form and show success message
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      notes: '',
-      selectedSlot: null,
-    });
-    setSelectedSlot(null);
-    setShowForm(false);
-    setSuccessMessage('Your consultation has been scheduled! We will contact you shortly to confirm.');
-    
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 5000);
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startTime: formData.selectedSlot.startTime,
+          endTime: formData.selectedSlot.endTime,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to book appointment');
+
+      const booking = await response.json();
+      setBookedSlots(prev => [...prev, booking]);
+      
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        notes: '',
+        selectedSlot: null,
+      });
+      setSelectedSlot(null);
+      setShowForm(false);
+      setSuccessMessage('Your consultation has been scheduled! We will contact you shortly to confirm.');
+      
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      setErrorMessage('Failed to book appointment. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -166,6 +199,12 @@ export default function SchedulePage() {
           </Link>
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded">
+          {errorMessage}
+        </div>
+      )}
       
       {/* Date Navigation */}
       <div className="flex items-center justify-between mb-6">
@@ -278,9 +317,14 @@ export default function SchedulePage() {
 
           <button
             type="submit"
-            className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={isLoading}
+            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white ${
+              isLoading 
+                ? 'bg-blue-400 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+            }`}
           >
-            Book Consultation
+            {isLoading ? 'Booking...' : 'Book Consultation'}
           </button>
         </form>
       )}

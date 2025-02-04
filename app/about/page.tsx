@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 
 interface ContactFormData {
@@ -22,6 +22,8 @@ export default function ContactPage() {
     preferredDays: [],
   });
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const timePreferences = [
     { id: 'morning', label: 'Morning (9am - 12pm)' },
@@ -39,70 +41,54 @@ export default function ContactPage() {
     { id: 'sunday', label: 'Sunday' },
   ];
 
-  // Load form responses from localStorage on mount
-  useEffect(() => {
-    const savedResponses = localStorage.getItem('contactFormResponses');
-    if (!savedResponses) {
-      localStorage.setItem('contactFormResponses', JSON.stringify([]));
-    }
-  }, []);
-
   const formatPhoneNumber = (value: string) => {
-    // Remove all non-numeric characters
     const numbers = value.replace(/\D/g, '');
-    
-    // Format the number
-    if (numbers.length <= 3) {
-      return numbers;
-    } else if (numbers.length <= 6) {
-      return `(${numbers.slice(0, 3)}) ${numbers.slice(3)}`;
-    } else if (numbers.length <= 10) {
-      return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6)}`;
-    } else {
-      return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6, 10)}`;
-    }
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `(${numbers.slice(0, 3)}) ${numbers.slice(3)}`;
+    return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 6)}-${numbers.slice(6, 10)}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage('');
 
-    // Create new contact form response
-    const newResponse = {
-      id: new Date().getTime().toString(),
-      ...formData,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-    // Get existing responses or initialize empty array
-    const existingResponses = JSON.parse(localStorage.getItem('contactFormResponses') || '[]');
-    
-    // Add new response
-    const updatedResponses = [...existingResponses, newResponse];
-    
-    // Save to localStorage
-    localStorage.setItem('contactFormResponses', JSON.stringify(updatedResponses));
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
 
-    // Clear form and show success message
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      message: '',
-      contactPreference: 'morning',
-      preferredDays: [],
-    });
-    setSuccessMessage('Thank you for your message! We will get back to you soon.');
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        message: '',
+        contactPreference: 'morning',
+        preferredDays: [],
+      });
+      setSuccessMessage('Thank you for your message! We will get back to you soon.');
 
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 5000);
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setErrorMessage('Failed to submit form. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
     if (name === 'phone') {
-      // Format phone number as it's typed
       setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -142,6 +128,12 @@ export default function ContactPage() {
       {successMessage && (
         <div className="mb-6 p-4 bg-green-100 text-green-700 rounded">
           {successMessage}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded">
+          {errorMessage}
         </div>
       )}
 
@@ -254,9 +246,14 @@ export default function ContactPage() {
 
         <button
           type="submit"
-          className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          disabled={isSubmitting}
+          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white ${
+            isSubmitting
+              ? 'bg-blue-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+          }`}
         >
-          Send Message
+          {isSubmitting ? 'Sending...' : 'Send Message'}
         </button>
       </form>
     </div>
