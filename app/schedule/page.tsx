@@ -168,24 +168,21 @@ export default function SchedulePage() {
     setErrorMessage('');
     
     try {
-      console.log('Submitting booking:', {
-        startTime: formData.selectedSlot.startTime,
-        endTime: formData.selectedSlot.endTime,
+      // Convert dates to ISO strings before sending
+      const bookingData = {
+        startTime: formData.selectedSlot.startTime.toISOString(),
+        endTime: formData.selectedSlot.endTime.toISOString(),
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-      });
+      };
+
+      console.log('Submitting booking:', bookingData);
 
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startTime: formData.selectedSlot.startTime,
-          endTime: formData.selectedSlot.endTime,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-        }),
+        body: JSON.stringify(bookingData),
       });
 
       if (!response.ok) {

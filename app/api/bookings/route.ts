@@ -20,9 +20,21 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('Creating booking with data:', {
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
+    // Parse dates and validate them
+    const parsedStartTime = new Date(startTime);
+    const parsedEndTime = new Date(endTime);
+
+    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+      console.error('Invalid date format:', { startTime, endTime });
+      return NextResponse.json(
+        { error: 'Invalid date format' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Creating booking with parsed data:', {
+      startTime: parsedStartTime,
+      endTime: parsedEndTime,
       name,
       email,
       phone
@@ -30,8 +42,8 @@ export async function POST(request: Request) {
 
     const booking = await prisma.booking.create({
       data: {
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
         name,
         email,
         phone,
@@ -44,7 +56,8 @@ export async function POST(request: Request) {
     console.error('Detailed error creating booking:', {
       name: error instanceof Error ? error.name : 'Unknown',
       message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
+      error // Log the entire error object
     });
     return NextResponse.json(
       { 
