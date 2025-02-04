@@ -15,17 +15,6 @@ interface FormData {
   purpose: string;
 }
 
-// Generate time slots from 9 AM to 5 PM
-const generateTimeSlots = (): TimeSlot[] => {
-  const slots: TimeSlot[] = [];
-  for (let hour = 9; hour < 17; hour++) {
-    const time = `${hour.toString().padStart(2, '0')}:00`;
-    slots.push({ time, available: true });
-    slots.push({ time: `${hour.toString().padStart(2, '0')}:30`, available: true });
-  }
-  return slots;
-};
-
 export default function Schedule() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -63,8 +52,9 @@ export default function Schedule() {
         if (!response.ok) throw new Error('Failed to fetch time slots');
         const slots = await response.json();
         setTimeSlots(slots);
-      } catch (err) {
+      } catch (error) {
         setError('Failed to load available time slots. Please try again.');
+        console.error('Error fetching time slots:', error);
       } finally {
         setLoading(false);
       }
@@ -106,27 +96,9 @@ export default function Schedule() {
         company: '',
         purpose: ''
       });
-
-      // Send contact form data
-      const contactResponse = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          companyName: formData.company,
-          contactName: formData.name,
-          email: formData.email,
-          projectDetails: formData.purpose,
-        }),
-      });
-
-      if (!contactResponse.ok) {
-        const contactErrorData = await contactResponse.json();
-        throw new Error(contactErrorData.error || 'Failed to send contact form');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to schedule meeting');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to schedule meeting');
+      console.error('Submission error:', error);
     } finally {
       setLoading(false);
     }

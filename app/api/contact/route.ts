@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 }
 
 // Get all contact submissions (protected route for admin)
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // TODO: Add authentication
     const submissions = await contactsPrisma.contactSubmission.findMany({
