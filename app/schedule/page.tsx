@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format, addDays, setHours, setMinutes, isBefore } from 'date-fns';
+import Link from 'next/link';
 
 interface TimeSlot {
   id: string;
@@ -148,7 +149,23 @@ export default function SchedulePage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Schedule a Consultation</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Schedule a Consultation</h1>
+        <div className="flex space-x-4">
+          <Link
+            href="/"
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          >
+            Back to Home
+          </Link>
+          <Link
+            href="/schedule/admin"
+            className="px-4 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+          >
+            Admin View
+          </Link>
+        </div>
+      </div>
       
       {/* Date Navigation */}
       <div className="flex items-center justify-between mb-6">
