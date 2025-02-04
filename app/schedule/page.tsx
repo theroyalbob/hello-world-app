@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format, addDays, setHours, setMinutes, isBefore } from 'date-fns';
+import { format, addDays, setHours, setMinutes, isBefore, parseISO } from 'date-fns';
 import Link from 'next/link';
 
 interface TimeSlot {
@@ -52,17 +52,26 @@ export default function SchedulePage() {
       setErrorMessage('');
       
       try {
+        console.log('Fetching bookings...');
         const response = await fetch('/api/bookings');
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch bookings');
+          console.error('API Error:', errorData);
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
+        
         const bookings = await response.json();
+        console.log(`Successfully fetched ${bookings.length} bookings`);
         setBookedSlots(bookings);
       } catch (error) {
-        console.error('Error fetching bookings:', error);
+        console.error('Detailed error fetching bookings:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
         setErrorMessage(
-          'Unable to load available time slots. Please refresh the page or try again later.'
+          `Unable to load available time slots. ${error instanceof Error ? error.message : 'Please try again later.'}`
         );
       } finally {
         setIsLoadingSlots(false);
@@ -354,6 +363,43 @@ export default function SchedulePage() {
           </button>
         </form>
       )}
+
+      {/* Bookings Section */}
+      <div className="space-y-6 mb-12">
+        <h2 className="text-2xl font-semibold mb-4">Upcoming Consultations</h2>
+        {bookedSlots.length === 0 ? (
+          <p className="text-gray-500">No bookings scheduled.</p>
+        ) : (
+          bookedSlots.map((booking) => (
+            <div
+              key={booking.id}
+              className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {format(parseISO(booking.startTime), 'EEEE, MMMM d, yyyy')}
+                  </h3>
+                  <p className="text-gray-600">
+                    {format(parseISO(booking.startTime), 'h:mm a')} - {format(parseISO(booking.endTime), 'h:mm a')}
+                  </p>
+                  <div className="mt-2">
+                    <p><span className="font-medium">Name:</span> {booking.bookedBy.name}</p>
+                    <p><span className="font-medium">Email:</span> {booking.bookedBy.email}</p>
+                    <p><span className="font-medium">Phone:</span> {booking.bookedBy.phone}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleCancelBooking(booking.id)}
+                  className="px-4 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 } 

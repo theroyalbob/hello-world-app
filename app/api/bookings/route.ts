@@ -37,7 +37,9 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  console.log('GET /api/bookings: Starting request');
   try {
+    console.log('Attempting to connect to database...');
     // Only fetch future bookings
     const bookings = await prisma.booking.findMany({
       where: {
@@ -49,14 +51,20 @@ export async function GET() {
         startTime: 'asc',
       },
     });
-
+    console.log(`Successfully fetched ${bookings.length} bookings`);
     return NextResponse.json(bookings);
   } catch (error) {
-    console.error('Error fetching bookings:', error);
+    console.error('Detailed error in /api/bookings:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { error: 'Failed to fetch bookings', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
+  } finally {
+    console.log('GET /api/bookings: Request completed');
   }
 }
 
