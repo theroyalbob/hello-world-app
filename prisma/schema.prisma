@@ -23,10 +23,12 @@ model ContactFormResponse {
 
 model Booking {
   id        String   @id @default(cuid())
-  startTime DateTime
-  endTime   DateTime
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
   name      String
   email     String
   phone     String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("bookings")
 } 

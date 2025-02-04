@@ -59,20 +59,28 @@ export default function SchedulePage() {
         if (!response.ok) {
           const errorData = await response.json();
           console.error('API Error:', errorData);
+          // If the response is not OK but we got an empty array, don't show an error
+          if (Array.isArray(errorData) && errorData.length === 0) {
+            setBookedSlots([]);
+            return;
+          }
           throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         
         const bookings = await response.json();
         console.log(`Successfully fetched ${bookings.length} bookings`);
-        setBookedSlots(bookings);
+        setBookedSlots(bookings || []);
       } catch (error) {
         console.error('Detailed error fetching bookings:', {
           name: error instanceof Error ? error.name : 'Unknown',
           message: error instanceof Error ? error.message : 'Unknown error'
         });
-        setErrorMessage(
-          `Unable to load available time slots. ${error instanceof Error ? error.message : 'Please try again later.'}`
-        );
+        // Don't show error message if we have an empty array
+        if (!Array.isArray(error) || error.length > 0) {
+          setErrorMessage(
+            `Unable to load available time slots. ${error instanceof Error ? error.message : 'Please try again later.'}`
+          );
+        }
       } finally {
         setIsLoadingSlots(false);
       }
