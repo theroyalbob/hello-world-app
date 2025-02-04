@@ -38,7 +38,3 @@ next-env.d.ts
 # IDE
 .idea
 .vscode
-
-# Prisma
-/prisma/generated/
-*.dylib.node
