@@ -19,6 +19,12 @@ export default function Home() {
             <Link href="/about" className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
               Contact
             </Link>
+            <Link 
+              href="/schedule/admin"
+              className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Admin
+            </Link>
           </nav>
         </div>
       </header>

@@ -123,12 +123,20 @@ export default function ContactPage() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Contact Us</h1>
-        <Link
-          href="/"
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-        >
-          Back to Home
-        </Link>
+        <div className="flex space-x-4">
+          <Link
+            href="/"
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          >
+            Back to Home
+          </Link>
+          <Link
+            href="/schedule/admin"
+            className="px-4 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+          >
+            Admin Login
+          </Link>
+        </div>
       </div>
 
       {successMessage && (
