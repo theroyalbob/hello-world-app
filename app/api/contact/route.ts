@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { contactsPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 // Validation schema
 const contactSchema = z.object({
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const validatedData = contactSchema.parse(body);
 
     // Create the contact submission
-    const submission = await contactsPrisma.contactSubmission.create({
+    const submission = await prisma.contactSubmission.create({
       data: validatedData,
     });
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     // TODO: Add authentication
-    const submissions = await contactsPrisma.contactSubmission.findMany({
+    const submissions = await prisma.contactSubmission.findMany({
       orderBy: {
         createdAt: 'desc',
       },

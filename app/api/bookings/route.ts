@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { bookingsPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 // Validation schema
 const bookingSchema = z.object({
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const validatedData = bookingSchema.parse(body);
 
     // Check if the slot is available
-    const existingBooking = await bookingsPrisma.booking.findFirst({
+    const existingBooking = await prisma.booking.findFirst({
       where: {
         date: new Date(validatedData.date),
         time: validatedData.time,
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // Create the booking
-    const booking = await bookingsPrisma.booking.create({
+    const booking = await prisma.booking.create({
       data: {
         date: new Date(validatedData.date),
         time: validatedData.time,
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const bookings = await bookingsPrisma.booking.findMany({
+    const bookings = await prisma.booking.findMany({
       where: {
         date: new Date(date),
         status: 'CONFIRMED',

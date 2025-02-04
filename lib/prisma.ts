@@ -1,44 +1,13 @@
-import { PrismaClient as BookingsPrismaClient } from '@prisma/client';
-import { PrismaClient as ContactsPrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
-if (!process.env.BOOKINGS_PRISMA_URL) {
-  throw new Error('BOOKINGS_PRISMA_URL environment variable is not set');
-}
-
-if (!process.env.CONTACTS_PRISMA_URL) {
-  throw new Error('CONTACTS_PRISMA_URL environment variable is not set');
-}
-
-// Booking database client
-const globalForBookings = globalThis as unknown as {
-  bookingsPrisma: BookingsPrismaClient | undefined;
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
 };
 
-export const bookingsPrisma =
-  globalForBookings.bookingsPrisma ??
-  new BookingsPrismaClient({
-    datasources: {
-      db: {
-        url: process.env.BOOKINGS_PRISMA_URL,
-      },
-    },
-  });
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient();
 
-if (process.env.NODE_ENV !== 'production') globalForBookings.bookingsPrisma = bookingsPrisma;
-
-// Contact form database client
-const globalForContacts = globalThis as unknown as {
-  contactsPrisma: ContactsPrismaClient | undefined;
-};
-
-export const contactsPrisma =
-  globalForContacts.contactsPrisma ??
-  new ContactsPrismaClient({
-    datasources: {
-      db: {
-        url: process.env.CONTACTS_PRISMA_URL,
-      },
-    },
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForContacts.contactsPrisma = contactsPrisma; 
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma; 
