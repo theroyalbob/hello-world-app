@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { format, addDays, setHours, setMinutes } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { format, addDays, setHours, setMinutes, isBefore } from 'date-fns';
 
 interface TimeSlot {
   id: string;
@@ -18,9 +18,21 @@ interface ConsultationFormData {
   selectedSlot: TimeSlot | null;
 }
 
+interface BookedSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+  bookedBy: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+}
+
 export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([]);
   const [formData, setFormData] = useState<ConsultationFormData>({
     name: '',
     email: '',
@@ -31,23 +43,43 @@ export default function SchedulePage() {
   const [showForm, setShowForm] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Load booked slots from localStorage on component mount
+  useEffect(() => {
+    const savedBookings = localStorage.getItem('bookedConsultations');
+    if (savedBookings) {
+      setBookedSlots(JSON.parse(savedBookings));
+    }
+  }, []);
+
+  // Check if a slot is already booked
+  const isSlotBooked = (slotId: string): boolean => {
+    return bookedSlots.some(booking => booking.id === slotId);
+  };
+
   // Generate time slots for the selected date
   const generateTimeSlots = (date: Date): TimeSlot[] => {
     const slots: TimeSlot[] = [];
     const startHour = 9; // 9 AM
     const endHour = 17; // 5 PM
     const intervalMinutes = 30;
+    const now = new Date();
 
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += intervalMinutes) {
         const startTime = setMinutes(setHours(new Date(date), hour), minute);
         const endTime = setMinutes(setHours(new Date(date), hour), minute + intervalMinutes);
+        const slotId = format(startTime, 'yyyy-MM-dd-HH-mm');
+        
+        // A slot is available if:
+        // 1. It's not already booked
+        // 2. It's not in the past
+        const isAvailable = !isSlotBooked(slotId) && !isBefore(startTime, now);
         
         slots.push({
-          id: `${format(startTime, 'yyyy-MM-dd-HH-mm')}`,
+          id: slotId,
           startTime,
           endTime,
-          isAvailable: true, // In a real app, this would be determined by checking against booked slots
+          isAvailable,
         });
       }
     }
@@ -62,6 +94,7 @@ export default function SchedulePage() {
   };
 
   const handleSlotSelect = (slot: TimeSlot) => {
+    if (!slot.isAvailable) return;
     setSelectedSlot(slot);
     setShowForm(true);
     setFormData(prev => ({ ...prev, selectedSlot: slot }));
@@ -75,9 +108,26 @@ export default function SchedulePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Here you would typically send this to your backend
-    // For now, we'll just show a success message
-    console.log('Booking submitted:', formData);
+    if (!formData.selectedSlot) return;
+
+    // Create new booking
+    const newBooking: BookedSlot = {
+      id: formData.selectedSlot.id,
+      startTime: formData.selectedSlot.startTime.toISOString(),
+      endTime: formData.selectedSlot.endTime.toISOString(),
+      bookedBy: {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      },
+    };
+
+    // Update booked slots
+    const updatedBookings = [...bookedSlots, newBooking];
+    setBookedSlots(updatedBookings);
+
+    // Save to localStorage
+    localStorage.setItem('bookedConsultations', JSON.stringify(updatedBookings));
     
     // Clear form and show success message
     setFormData({
@@ -134,7 +184,8 @@ export default function SchedulePage() {
             }`}
             disabled={!slot.isAvailable}
           >
-            {format(slot.startTime, 'h:mm a')}
+            <div>{format(slot.startTime, 'h:mm a')}</div>
+            {!slot.isAvailable && <div className="text-xs text-red-500">Booked</div>}
           </button>
         ))}
       </div>
