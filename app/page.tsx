@@ -16,6 +16,7 @@ export default function Home() {
             <Link href="/#services" className="text-gray-600 hover:text-blue-600">Services</Link>
             <Link href="/#case-studies" className="text-gray-600 hover:text-blue-600">Case Studies</Link>
             <Link href="/#testimonials" className="text-gray-600 hover:text-blue-600">Testimonials</Link>
+            <Link href="/schedule" className="text-gray-600 hover:text-blue-600">Schedule</Link>
             <Link href="/about" className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
               Contact
             </Link>
@@ -32,9 +33,9 @@ export default function Home() {
             <p className="text-xl text-gray-600 mb-8 max-w-2xl">
               Transform your business with expert data consulting, analytics, and implementation services.
             </p>
-            <button className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <Link href="/schedule" className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
               Schedule a Consultation
-            </button>
+            </Link>
           </div>
         </section>
 
