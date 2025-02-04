@@ -1,5 +1,13 @@
-import { PrismaClient as BookingsPrismaClient } from '../prisma/generated/bookings-client';
-import { PrismaClient as ContactsPrismaClient } from '../prisma/generated/contacts-client';
+import { PrismaClient as BookingsPrismaClient } from '@prisma/client';
+import { PrismaClient as ContactsPrismaClient } from '@prisma/client';
+
+if (!process.env.BOOKINGS_PRISMA_URL) {
+  throw new Error('BOOKINGS_PRISMA_URL environment variable is not set');
+}
+
+if (!process.env.CONTACTS_PRISMA_URL) {
+  throw new Error('CONTACTS_PRISMA_URL environment variable is not set');
+}
 
 // Booking database client
 const globalForBookings = globalThis as unknown as {
