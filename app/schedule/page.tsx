@@ -43,18 +43,29 @@ export default function SchedulePage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   // Load booked slots from database on component mount and date change
   useEffect(() => {
     const fetchBookings = async () => {
+      setIsLoadingSlots(true);
+      setErrorMessage('');
+      
       try {
         const response = await fetch('/api/bookings');
-        if (!response.ok) throw new Error('Failed to fetch bookings');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch bookings');
+        }
         const bookings = await response.json();
         setBookedSlots(bookings);
       } catch (error) {
         console.error('Error fetching bookings:', error);
-        setErrorMessage('Failed to load available time slots. Please try again later.');
+        setErrorMessage(
+          'Unable to load available time slots. Please refresh the page or try again later.'
+        );
+      } finally {
+        setIsLoadingSlots(false);
       }
     };
 
@@ -202,7 +213,13 @@ export default function SchedulePage() {
 
       {errorMessage && (
         <div className="mb-6 p-4 bg-red-100 text-red-700 rounded">
-          {errorMessage}
+          <p>{errorMessage}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Click here to refresh the page
+          </button>
         </div>
       )}
       
@@ -211,6 +228,7 @@ export default function SchedulePage() {
         <button
           onClick={() => handleDateChange(-1)}
           className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          disabled={isLoadingSlots}
         >
           Previous Day
         </button>
@@ -220,31 +238,39 @@ export default function SchedulePage() {
         <button
           onClick={() => handleDateChange(1)}
           className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          disabled={isLoadingSlots}
         >
           Next Day
         </button>
       </div>
 
       {/* Time Slots Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {timeSlots.map((slot) => (
-          <button
-            key={slot.id}
-            onClick={() => handleSlotSelect(slot)}
-            className={`p-4 rounded text-center transition-colors ${
-              selectedSlot?.id === slot.id
-                ? 'bg-blue-500 text-white'
-                : slot.isAvailable
-                ? 'bg-white border border-gray-200 hover:border-blue-500'
-                : 'bg-gray-100 text-gray-500 cursor-not-allowed'
-            }`}
-            disabled={!slot.isAvailable}
-          >
-            <div>{format(slot.startTime, 'h:mm a')}</div>
-            {!slot.isAvailable && <div className="text-xs text-red-500">Booked</div>}
-          </button>
-        ))}
-      </div>
+      {isLoadingSlots ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading available time slots...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {timeSlots.map((slot) => (
+            <button
+              key={slot.id}
+              onClick={() => handleSlotSelect(slot)}
+              className={`p-4 rounded text-center transition-colors ${
+                selectedSlot?.id === slot.id
+                  ? 'bg-blue-500 text-white'
+                  : slot.isAvailable
+                  ? 'bg-white border border-gray-200 hover:border-blue-500'
+                  : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+              }`}
+              disabled={!slot.isAvailable || isLoadingSlots}
+            >
+              <div>{format(slot.startTime, 'h:mm a')}</div>
+              {!slot.isAvailable && <div className="text-xs text-red-500">Booked</div>}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Success Message */}
       {successMessage && (

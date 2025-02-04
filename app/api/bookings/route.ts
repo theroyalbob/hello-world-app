@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
+// Create a single PrismaClient instance and reuse it
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { startTime, endTime, name, email, phone } = body;
+
+    if (!startTime || !endTime || !name || !email || !phone) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
 
     const booking = await prisma.booking.create({
       data: {
@@ -22,7 +30,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error creating booking:', error);
     return NextResponse.json(
-      { error: 'Failed to create booking' },
+      { error: 'Failed to create booking', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -30,7 +38,13 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    // Only fetch future bookings
     const bookings = await prisma.booking.findMany({
+      where: {
+        startTime: {
+          gte: new Date(), // Only get bookings from now onwards
+        },
+      },
       orderBy: {
         startTime: 'asc',
       },
@@ -40,7 +54,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching bookings:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
+      { error: 'Failed to fetch bookings', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -68,7 +82,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('Error deleting booking:', error);
     return NextResponse.json(
-      { error: 'Failed to delete booking' },
+      { error: 'Failed to delete booking', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
