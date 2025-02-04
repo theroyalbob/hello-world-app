@@ -200,6 +200,24 @@ export default function SchedulePage() {
     }
   };
 
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel booking');
+      }
+
+      // Optionally, update the bookedSlots state to remove the canceled booking
+      setBookedSlots(prev => prev.filter(booking => booking.id !== bookingId));
+    } catch (error) {
+      console.error('Error canceling booking:', error);
+      setErrorMessage('Failed to cancel booking. Please try again.');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-8">
@@ -384,9 +402,9 @@ export default function SchedulePage() {
                     {format(parseISO(booking.startTime), 'h:mm a')} - {format(parseISO(booking.endTime), 'h:mm a')}
                   </p>
                   <div className="mt-2">
-                    <p><span className="font-medium">Name:</span> {booking.bookedBy.name}</p>
-                    <p><span className="font-medium">Email:</span> {booking.bookedBy.email}</p>
-                    <p><span className="font-medium">Phone:</span> {booking.bookedBy.phone}</p>
+                    <p><span className="font-medium">Name:</span> {booking.name}</p>
+                    <p><span className="font-medium">Email:</span> {booking.email}</p>
+                    <p><span className="font-medium">Phone:</span> {booking.phone}</p>
                   </div>
                 </div>
                 <button
