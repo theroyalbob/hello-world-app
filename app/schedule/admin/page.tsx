@@ -1,18 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format, parseISO, addDays, setHours, setMinutes } from 'date-fns';
+import { format, parseISO, addDays, setHours, setMinutes, differenceInHours } from 'date-fns';
 import Link from 'next/link';
 
 interface BookedSlot {
   id: string;
   startTime: string;
   endTime: string;
-  bookedBy: {
-    name: string;
-    email: string;
-    phone: string;
-  };
+  name: string;
+  email: string;
+  phone: string;
 }
 
 interface ContactFormResponse {
@@ -22,7 +20,7 @@ interface ContactFormResponse {
   phone: string;
   message: string;
   contactPreference: string;
-  preferredDays: string[];
+  preferredDays: string;
   timestamp: string;
 }
 
@@ -40,24 +38,51 @@ export default function AdminPage() {
     time: '',
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const bookingsResponse = await fetch('/api/bookings');
+      if (!bookingsResponse.ok) {
+        throw new Error('Failed to fetch bookings');
+      }
+      const bookingsData = await bookingsResponse.json();
+
+      const contactsResponse = await fetch('/api/contact');
+      if (!contactsResponse.ok) {
+        throw new Error('Failed to fetch contact responses');
+      }
+      const contactsData = await contactsResponse.json();
+
+      setBookings(bookingsData);
+      setContactResponses(contactsData);
+      setLastFetchTime(new Date());
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Failed to fetch data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const savedBookings = localStorage.getItem('bookedConsultations');
-    const savedContacts = localStorage.getItem('contactFormResponses');
-    
-    if (savedBookings) {
-      const parsedBookings = JSON.parse(savedBookings);
-      parsedBookings.sort((a: BookedSlot, b: BookedSlot) => 
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-      );
-      setBookings(parsedBookings);
-    }
+    if (isAuthenticated) {
+      fetchData();
 
-    if (savedContacts) {
-      const parsedContacts = JSON.parse(savedContacts);
-      setContactResponses(parsedContacts);
+      const checkAndFetch = () => {
+        if (lastFetchTime && differenceInHours(new Date(), lastFetchTime) >= 4) {
+          fetchData();
+        }
+      };
+
+      const interval = setInterval(checkAndFetch, 60 * 60 * 1000);
+
+      return () => clearInterval(interval);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,10 +94,27 @@ export default function AdminPage() {
     }
   };
 
-  const handleCancelBooking = (bookingId: string) => {
-    const updatedBookings = bookings.filter(booking => booking.id !== bookingId);
-    setBookings(updatedBookings);
-    localStorage.setItem('bookedConsultations', JSON.stringify(updatedBookings));
+  const handleCancelBooking = async (bookingId: string) => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch(`/api/bookings?id=${bookingId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel booking');
+      }
+
+      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+    } catch (error) {
+      console.error('Error canceling booking:', error);
+      setError(error instanceof Error ? error.message : 'Failed to cancel booking');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatPhoneNumber = (value: string) => {
@@ -105,37 +147,52 @@ export default function AdminPage() {
     }
   };
 
-  const handleAdminBooking = (e: React.FormEvent) => {
+  const handleAdminBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { name, email, phone, date, time } = adminBookingForm;
+    setIsLoading(true);
+    setError('');
     
-    const [hours, minutes] = time.split(':');
-    const startTime = setMinutes(setHours(new Date(date), parseInt(hours)), parseInt(minutes));
-    const endTime = addDays(startTime, 0);
-    endTime.setMinutes(startTime.getMinutes() + 30);
+    try {
+      const { name, email, phone, date, time } = adminBookingForm;
+      
+      const [hours, minutes] = time.split(':');
+      const startTime = setMinutes(setHours(new Date(date), parseInt(hours)), parseInt(minutes));
+      const endTime = addDays(startTime, 0);
+      endTime.setMinutes(startTime.getMinutes() + 30);
 
-    const newBooking: BookedSlot = {
-      id: format(startTime, 'yyyy-MM-dd-HH-mm'),
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      bookedBy: {
-        name,
-        email,
-        phone,
-      },
-    };
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          name,
+          email,
+          phone,
+        }),
+      });
 
-    const updatedBookings = [...bookings, newBooking];
-    setBookings(updatedBookings);
-    localStorage.setItem('bookedConsultations', JSON.stringify(updatedBookings));
-    setShowScheduler(false);
-    setAdminBookingForm({
-      name: '',
-      email: '',
-      phone: '',
-      date: '',
-      time: '',
-    });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create booking');
+      }
+
+      const newBooking = await response.json();
+      setBookings(prev => [...prev, newBooking]);
+      setShowScheduler(false);
+      setAdminBookingForm({
+        name: '',
+        email: '',
+        phone: '',
+        date: '',
+        time: '',
+      });
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create booking');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -172,6 +229,17 @@ export default function AdminPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <div className="flex space-x-4">
+          <button
+            onClick={fetchData}
+            disabled={isLoading}
+            className={`px-4 py-2 ${
+              isLoading 
+                ? 'bg-gray-300 cursor-not-allowed' 
+                : 'bg-green-600 hover:bg-green-700'
+            } text-white rounded`}
+          >
+            {isLoading ? 'Refreshing...' : 'Refresh Data'}
+          </button>
           <Link
             href="/schedule"
             className="px-4 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
@@ -186,6 +254,18 @@ export default function AdminPage() {
           </Link>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      {lastFetchTime && (
+        <p className="text-sm text-gray-600 mb-4">
+          Last updated: {format(lastFetchTime, 'MMM d, yyyy h:mm a')}
+        </p>
+      )}
 
       {/* Admin Scheduler */}
       <div className="mb-8">
@@ -298,9 +378,9 @@ export default function AdminPage() {
                     {format(parseISO(booking.startTime), 'h:mm a')} - {format(parseISO(booking.endTime), 'h:mm a')}
                   </p>
                   <div className="mt-2">
-                    <p><span className="font-medium">Name:</span> {booking.bookedBy.name}</p>
-                    <p><span className="font-medium">Email:</span> {booking.bookedBy.email}</p>
-                    <p><span className="font-medium">Phone:</span> {booking.bookedBy.phone}</p>
+                    <p><span className="font-medium">Name:</span> {booking.name}</p>
+                    <p><span className="font-medium">Email:</span> {booking.email}</p>
+                    <p><span className="font-medium">Phone:</span> {booking.phone}</p>
                   </div>
                 </div>
                 <button
@@ -321,45 +401,55 @@ export default function AdminPage() {
         {contactResponses.length === 0 ? (
           <p className="text-gray-500">No contact form submissions yet.</p>
         ) : (
-          contactResponses.map((response) => (
-            <div
-              key={response.id}
-              className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div>
-                <div className="flex justify-between">
-                  <h3 className="font-semibold text-lg">{response.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    Submitted: {format(parseISO(response.timestamp), 'MMMM d, yyyy h:mm a')}
-                  </p>
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-4">
-                  <div>
-                    <p><span className="font-medium">Email:</span> {response.email}</p>
-                    <p><span className="font-medium">Phone:</span> {response.phone}</p>
+          contactResponses.map((response) => {
+            // Parse the preferredDays JSON string
+            let preferredDays: string[] = [];
+            try {
+              preferredDays = JSON.parse(response.preferredDays);
+            } catch (e) {
+              console.error('Error parsing preferredDays:', e);
+            }
+
+            return (
+              <div
+                key={response.id}
+                className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div>
+                  <div className="flex justify-between">
+                    <h3 className="font-semibold text-lg">{response.name}</h3>
+                    <p className="text-sm text-gray-500">
+                      Submitted: {format(parseISO(response.timestamp), 'MMMM d, yyyy h:mm a')}
+                    </p>
                   </div>
-                  <div>
-                    <p><span className="font-medium">Preferred Time:</span> {
-                      {
-                        'morning': 'Morning (9am - 12pm)',
-                        'workday': 'Work Day (12pm - 5pm)',
-                        'evening': 'Evening (5pm - 8pm)'
-                      }[response.contactPreference] || response.contactPreference
-                    }</p>
-                    <p><span className="font-medium">Preferred Days:</span> {
-                      response.preferredDays.map(day => 
-                        day.charAt(0).toUpperCase() + day.slice(1)
-                      ).join(', ') || 'None selected'
-                    }</p>
+                  <div className="mt-2 grid grid-cols-2 gap-4">
+                    <div>
+                      <p><span className="font-medium">Email:</span> {response.email}</p>
+                      <p><span className="font-medium">Phone:</span> {response.phone}</p>
+                    </div>
+                    <div>
+                      <p><span className="font-medium">Preferred Time:</span> {
+                        {
+                          'morning': 'Morning (9am - 12pm)',
+                          'workday': 'Work Day (12pm - 5pm)',
+                          'evening': 'Evening (5pm - 8pm)'
+                        }[response.contactPreference] || response.contactPreference
+                      }</p>
+                      <p><span className="font-medium">Preferred Days:</span> {
+                        preferredDays.map(day => 
+                          day.charAt(0).toUpperCase() + day.slice(1)
+                        ).join(', ') || 'None selected'
+                      }</p>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 bg-gray-50 p-3 rounded">
-                  <p className="font-medium mb-1">Message:</p>
-                  <p className="text-gray-700">{response.message}</p>
+                  <div className="mt-4 bg-gray-50 p-3 rounded">
+                    <p className="font-medium mb-1">Message:</p>
+                    <p className="text-gray-700">{response.message}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
